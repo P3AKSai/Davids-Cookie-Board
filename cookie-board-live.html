@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Cookie Board</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍪</text></svg>">
+
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Big+Shoulders:opsz,wght@10..72,500;10..72,700;10..72,800;10..72,900&family=Libre+Franklin:ital,wght@0,400;0,500;0,600;0,700;1,500&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+  :root {
+    --bg: #f1e8d6;
+    --surface: #fffdf8;
+    --surface-2: #fbf2e0;
+    --ink: #241609;
+    --ink-muted: #6f5c46;
+    --accent: #b3701f;
+    --accent-strong: #8a5416;
+    --ribbon: #8c2436;
+    --ribbon-strong: #6e1c2a;
+    --line: rgba(36, 22, 9, 0.14);
+    --line-strong: rgba(36, 22, 9, 0.26);
+    --shadow: 0 1px 2px rgba(36, 22, 9, 0.08), 0 8px 24px -12px rgba(36, 22, 9, 0.28);
+    --focus: #2f6f5e;
+    --ok: #2f7a4d;
+    --warn: #a5471f;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #1a120a; --surface: #241a10; --surface-2: #2c2013;
+      --ink: #f4e9d6; --ink-muted: #bfab8d;
+      --accent: #e3a54c; --accent-strong: #f0bd72;
+      --ribbon: #dd6b7a; --ribbon-strong: #ea8d99;
+      --line: rgba(244, 233, 214, 0.14); --line-strong: rgba(244, 233, 214, 0.26);
+      --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 10px 28px -14px rgba(0,0,0,0.7);
+      --focus: #7fd6bc; --ok: #6fd49a; --warn: #f0a06e;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #1a120a; --surface: #241a10; --surface-2: #2c2013;
+    --ink: #f4e9d6; --ink-muted: #bfab8d;
+    --accent: #e3a54c; --accent-strong: #f0bd72;
+    --ribbon: #dd6b7a; --ribbon-strong: #ea8d99;
+    --line: rgba(244, 233, 214, 0.14); --line-strong: rgba(244, 233, 214, 0.26);
+    --shadow: 0 1px 2px rgba(0,0,0,0.4), 0 10px 28px -14px rgba(0,0,0,0.7);
+    --focus: #7fd6bc; --ok: #6fd49a; --warn: #f0a06e;
+  }
+
+  * { box-sizing: border-box; }
+  html { color-scheme: light dark; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: "Libre Franklin", system-ui, -apple-system, "Segoe UI", sans-serif;
+    line-height: 1.5; -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 0 clamp(1.25rem, 4vw, 2.5rem); }
+
+  header.site { padding: clamp(2.25rem, 5vw, 3.5rem) 0 clamp(1.75rem, 4vw, 2.5rem); border-bottom: 1px solid var(--line); }
+  .head-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; flex-wrap: wrap; }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 0.5rem;
+    font-family: "JetBrains Mono", monospace; font-size: 0.72rem; font-weight: 500;
+    letter-spacing: 0.14em; text-transform: uppercase; color: var(--ribbon);
+  }
+  .eyebrow::before { content: ""; width: 0.55rem; height: 0.55rem; background: var(--ribbon); transform: rotate(45deg); flex: none; }
+  h1.title {
+    font-family: "Big Shoulders", sans-serif; font-weight: 800; font-size: clamp(2.6rem, 6.5vw, 4.4rem);
+    line-height: 0.94; margin: 0.4rem 0 0; text-wrap: balance; text-transform: uppercase; color: var(--ink);
+  }
+  h1.title em { font-style: normal; color: var(--accent-strong); }
+  p.dek { max-width: 42rem; margin: 0.9rem 0 0; font-size: 1.02rem; color: var(--ink-muted); }
+  p.dek strong { color: var(--ink); font-weight: 600; }
+
+  .status-box { text-align: right; font-family: "JetBrains Mono", monospace; font-size: 0.74rem; color: var(--ink-muted); }
+  .status-box .dot { display: inline-block; width: 0.5rem; height: 0.5rem; border-radius: 50%; margin-right: 0.4rem; background: var(--ink-muted); }
+  .status-box.live .dot { background: var(--ok); }
+  .status-box.error .dot { background: var(--warn); }
+  button.refresh {
+    margin-top: 0.5rem; font-family: "JetBrains Mono", monospace; font-size: 0.72rem; letter-spacing: 0.04em;
+    background: var(--surface); border: 1px solid var(--line-strong); color: var(--ink);
+    padding: 0.35rem 0.7rem; cursor: pointer; text-transform: uppercase;
+  }
+  button.refresh:hover { border-color: var(--ribbon); color: var(--ribbon); }
+  button.refresh:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+  button.refresh[disabled] { opacity: 0.55; cursor: default; }
+
+  main { padding: clamp(2rem, 5vw, 3rem) 0 4rem; }
+  .view { display: none; }
+  .view.active { display: block; }
+  .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.4rem; }
+  h2.section-title { font-family: "Big Shoulders", sans-serif; font-weight: 700; font-size: 1.5rem; text-transform: uppercase; letter-spacing: 0.02em; margin: 0; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(15.5rem, 1fr)); gap: 1.5rem 1.25rem; }
+
+  .ribbon {
+    position: relative; display: flex; flex-direction: column; background: var(--surface);
+    border: 1px solid var(--line); box-shadow: var(--shadow); padding: 1.2rem 1.2rem 1.7rem;
+    text-align: left; cursor: pointer; font: inherit; color: inherit;
+    clip-path: polygon(0 0, 100% 0, 100% 88%, 50% 100%, 0 88%);
+    transition: transform 0.15s ease;
+  }
+  .ribbon:hover { transform: translateY(-3px); }
+  .ribbon:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+  @media (prefers-reduced-motion: reduce) { .ribbon { transition: none; } .ribbon:hover { transform: none; } }
+
+  .rank {
+    position: absolute; top: -0.6rem; left: 1.1rem; background: var(--ribbon); color: #fdf2e6;
+    font-family: "JetBrains Mono", monospace; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em;
+    padding: 0.22rem 0.5rem; box-shadow: 0 2px 6px rgba(0,0,0,0.22);
+  }
+  .ribbon-school { font-family: "Big Shoulders", sans-serif; font-weight: 700; font-size: 1.3rem; line-height: 1.05; text-transform: uppercase; margin: 0.15rem 0 0.9rem; text-wrap: balance; }
+  .ribbon-stats { display: flex; gap: 1.4rem; margin-top: auto; }
+  .stat-figure { font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; }
+  .stat-figure .num { display: block; font-size: 1.5rem; font-weight: 700; color: var(--accent-strong); }
+  .stat-figure .lbl { display: block; font-size: 0.66rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-muted); margin-top: 0.15rem; }
+  .ribbon-cta { margin-top: 0.9rem; font-size: 0.8rem; font-weight: 600; color: var(--ribbon); }
+  .ribbon-cta::after { content: " →"; }
+  .ribbon.is-loading .ribbon-school { color: transparent; background: var(--line); border-radius: 2px; }
+  .ribbon.is-loading .num { color: transparent; background: var(--line); border-radius: 2px; }
+  .ribbon.has-error .ribbon-cta { color: var(--warn); }
+  .ribbon.has-error .ribbon-cta::after { content: " — unavailable"; }
+
+  .empty-note { grid-column: 1 / -1; border: 1px dashed var(--line-strong); padding: 1.4rem; font-size: 0.9rem; color: var(--ink-muted); text-align: center; }
+
+  .back { display: inline-flex; align-items: center; gap: 0.4rem; background: none; border: none; font: inherit; font-weight: 600; font-size: 0.85rem; color: var(--ribbon); cursor: pointer; padding: 0; margin-bottom: 1.4rem; }
+  .back::before { content: "←"; }
+  h2.school-name { font-family: "Big Shoulders", sans-serif; font-weight: 800; font-size: clamp(2rem, 5vw, 3rem); text-transform: uppercase; line-height: 0.98; margin: 0 0 1.5rem; text-wrap: balance; }
+  .summary-row { display: flex; flex-wrap: wrap; gap: 0.9rem; margin-bottom: 2rem; }
+  .summary-card { background: var(--surface); border: 1px solid var(--line); padding: 0.9rem 1.2rem; min-width: 8.5rem; }
+  .summary-card .num { font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; font-size: 1.7rem; font-weight: 700; color: var(--accent-strong); display: block; }
+  .summary-card .lbl { font-size: 0.7rem; letter-spacing: 0.07em; text-transform: uppercase; color: var(--ink-muted); }
+
+  .table-wrap { overflow-x: auto; border: 1px solid var(--line); background: var(--surface); }
+  table.orders { width: 100%; border-collapse: collapse; font-size: 0.92rem; min-width: 38rem; }
+  table.orders th {
+    text-align: left; font-size: 0.68rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-muted);
+    font-weight: 600; padding: 0.8rem 1rem; background: var(--surface-2); border-bottom: 1px solid var(--line-strong);
+    position: sticky; top: 0;
+  }
+  table.orders td { padding: 0.7rem 1rem; border-bottom: 1px solid var(--line); }
+  table.orders tbody tr:last-child td { border-bottom: none; }
+  table.orders td.num, table.orders th.num { text-align: right; font-family: "JetBrains Mono", monospace; font-variant-numeric: tabular-nums; }
+  .no-orders, .load-msg { padding: 2.5rem 1.5rem; text-align: center; color: var(--ink-muted); font-size: 0.95rem; }
+  .load-msg.error { color: var(--warn); }
+
+  footer.site { border-top: 1px solid var(--line); padding: 1.5rem 0 2.5rem; font-size: 0.78rem; color: var(--ink-muted); }
+  footer.site .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; }
+</style>
+</head>
+<body>
+
+<header class="site">
+  <div class="wrap head-row">
+    <div>
+      <span class="eyebrow">Prestige Fundraising</span>
+      <h1 class="title">The Cookie <em>Board</em></h1>
+      <p class="dek">Every box sold for <strong>David's Cookies</strong> goes on the board, straight from the order sheet. Pick your school to see who's ordered so far.</p>
+    </div>
+    <div class="status-box" id="status-box">
+      <span><span class="dot"></span><span id="status-text">Loading live data…</span></span><br>
+      <button class="refresh" id="refresh-btn" type="button">Refresh now</button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="wrap">
+
+    <section id="view-landing" class="view active">
+      <div class="section-head">
+        <h2 class="section-title">Schools</h2>
+      </div>
+      <div class="grid" id="school-grid"></div>
+    </section>
+
+    <section id="view-school" class="view">
+      <button class="back" id="back-btn" type="button">All schools</button>
+      <h2 class="school-name" id="school-name"></h2>
+      <div class="summary-row" id="school-summary"></div>
+      <div class="table-wrap" id="school-table-wrap"></div>
+    </section>
+
+  </div>
+</main>
+
+<footer class="site">
+  <div class="wrap">
+    <span>Prestige Fundraising &times; David's Cookies</span>
+    <span>Live from Google Sheets</span>
+  </div>
+</footer>
+
+<script>
+  // =====================================================================
+  //  CONFIG — edit these two things if the sheet ever changes.
+  // =====================================================================
+
+  // The spreadsheet ID from its URL:
+  // https://docs.google.com/spreadsheets/d/THIS_PART/edit
+  var SHEET_ID = "1Q1zfI8AiMhjYfuJV_ykWiTM46TnC8o7SbnodjsRba2Y";
+
+  // One entry per tab in the sheet. The "name" must match the tab name exactly.
+  var SCHOOL_TABS = [
+    "Bretton Woods", "Cayuga", "Chippewa", "Cutchogue East",
+    "Eastport Elementary", "Eastport South Manor", "Ft Salonga",
+    "Holy Child Academy", "May Moore", "Southold", "Tamarac",
+    "TJE Dance", "Tuttle", "West Side"
+  ];
+
+  // For this to work for every visitor (not just people logged into a Google
+  // account with access), the sheet needs to be reachable without a login:
+  // File > Share > Publish to web (or keep sharing set to
+  // "Anyone with the link — Viewer") in Google Sheets.
+  // =====================================================================
+
+  var schools = SCHOOL_TABS.map(function (name) {
+    return { name: name, slug: slugify(name), students: [], totals: { boxes: 0, amount: 0, sellers: 0 }, status: "loading" };
+  });
+
+  function slugify(name) {
+    return name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  }
+
+  function money(n) {
+    return "$" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  }
+
+  // ---- CSV parsing -------------------------------------------------------
+
+  function parseCSV(str) {
+    var rows = [], row = [], field = "", inQuotes = false;
+    for (var i = 0; i < str.length; i++) {
+      var c = str[i], next = str[i + 1];
+      if (inQuotes) {
+        if (c === '"' && next === '"') { field += '"'; i++; }
+        else if (c === '"') { inQuotes = false; }
+        else { field += c; }
+      } else {
+        if (c === '"') { inQuotes = true; }
+        else if (c === ",") { row.push(field); field = ""; }
+        else if (c === "\r") { /* skip */ }
+        else if (c === "\n") { row.push(field); rows.push(row); row = []; field = ""; }
+        else { field += c; }
+      }
+    }
+    if (field.length > 0 || row.length > 0) { row.push(field); rows.push(row); }
+    return rows.filter(function (r) { return r.length > 1 || (r[0] || "").trim() !== ""; });
+  }
+
+  function colIndex(header, keywords) {
+    for (var i = 0; i < header.length; i++) {
+      var h = header[i].toLowerCase();
+      for (var k = 0; k < keywords.length; k++) {
+        if (h.indexOf(keywords[k]) > -1) return i;
+      }
+    }
+    return -1;
+  }
+
+  function parseSchoolCSV(text) {
+    var rows = parseCSV(text);
+    if (rows.length === 0) return [];
+    var header = rows[0];
+    var firstIdx = colIndex(header, ["first"]);
+    var lastIdx = colIndex(header, ["last"]);
+    var emailIdx = colIndex(header, ["email"]);
+    var amountIdx = colIndex(header, ["fee", "$"]);
+    var boxesIdx = colIndex(header, ["box"]);
+    if (firstIdx === -1) firstIdx = 0;
+    if (lastIdx === -1) lastIdx = 1;
+    if (emailIdx === -1) emailIdx = 2;
+    if (amountIdx === -1) amountIdx = 3;
+    if (boxesIdx === -1) boxesIdx = 4;
+
+    var students = [];
+    for (var r = 1; r < rows.length; r++) {
+      var row = rows[r];
+      var first = (row[firstIdx] || "").trim();
+      var last = (row[lastIdx] || "").trim();
+      if (!first || first === "-") continue;
+      var boxesRaw = (row[boxesIdx] || "").replace(/[^0-9.\-]/g, "");
+      var amountRaw = (row[amountIdx] || "").replace(/[^0-9.\-]/g, "");
+      var boxes = parseInt(boxesRaw, 10);
+      var amount = parseFloat(amountRaw);
+      students.push({
+        first: first,
+        last: last,
+        email: (row[emailIdx] || "").trim(),
+        boxes: isNaN(boxes) ? 0 : boxes,
+        amount: isNaN(amount) ? 0 : amount
+      });
+    }
+    return students;
+  }
+
+  function totalsFor(students) {
+    var boxes = 0, amount = 0;
+    students.forEach(function (s) { boxes += s.boxes; amount += s.amount; });
+    return { boxes: boxes, amount: amount, sellers: students.length };
+  }
+
+  // ---- fetching ------------------------------------------------------
+
+  function csvUrl(tabName) {
+    return "https://docs.google.com/spreadsheets/d/" + SHEET_ID + "/gviz/tq?tqx=out:csv&sheet=" + encodeURIComponent(tabName) + "&_=" + Date.now();
+  }
+
+  function fetchSchool(school) {
+    return fetch(csvUrl(school.name), { cache: "no-store" })
+      .then(function (res) {
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.text();
+      })
+      .then(function (text) {
+        school.students = parseSchoolCSV(text);
+        school.totals = totalsFor(school.students);
+        school.status = "ok";
+      })
+      .catch(function (err) {
+        school.status = "error";
+        school.error = err.message;
+      });
+  }
+
+  var statusBox = document.getElementById("status-box");
+  var statusText = document.getElementById("status-text");
+  var refreshBtn = document.getElementById("refresh-btn");
+
+  function loadAll() {
+    refreshBtn.setAttribute("disabled", "disabled");
+    statusBox.className = "status-box";
+    statusText.textContent = "Loading live data…";
+    schools.forEach(function (s) { s.status = "loading"; });
+    renderGrid();
+
+    return Promise.all(schools.map(fetchSchool)).then(function () {
+      var failed = schools.filter(function (s) { return s.status === "error"; }).length;
+      if (failed === 0) {
+        statusBox.className = "status-box live";
+        statusText.textContent = "Live — updated " + new Date().toLocaleTimeString();
+      } else if (failed < schools.length) {
+        statusBox.className = "status-box error";
+        statusText.textContent = failed + " of " + schools.length + " schools failed to load";
+      } else {
+        statusBox.className = "status-box error";
+        statusText.textContent = "Couldn't reach the order sheet";
+      }
+      refreshBtn.removeAttribute("disabled");
+      renderGrid();
+      route();
+    });
+  }
+
+  refreshBtn.addEventListener("click", loadAll);
+
+  // ---- render: landing grid ---------------------------------------------
+
+  var gridEl = document.getElementById("school-grid");
+
+  function renderGrid() {
+    var grandTotal = schools.reduce(function (sum, s) { return sum + s.totals.amount; }, 0);
+    var anyLoading = schools.some(function (s) { return s.status === "loading"; });
+
+    var ordered = schools.slice().sort(function (a, b) {
+      if (b.totals.amount !== a.totals.amount) return b.totals.amount - a.totals.amount;
+      return a.name.localeCompare(b.name);
+    });
+
+    gridEl.innerHTML = "";
+
+    if (!anyLoading && grandTotal === 0 && schools.every(function (s) { return s.status === "ok"; })) {
+      var note = document.createElement("div");
+      note.className = "empty-note";
+      note.textContent = "The fundraiser board is set — orders haven't been logged yet. Check back once boxes start selling.";
+      gridEl.appendChild(note);
+    }
+
+    ordered.forEach(function (s, i) {
+      var card = document.createElement("button");
+      card.type = "button";
+      card.className = "ribbon" + (s.status === "loading" ? " is-loading" : "") + (s.status === "error" ? " has-error" : "");
+      card.setAttribute("data-slug", s.slug);
+
+      var rankHtml = "";
+      if (!anyLoading && grandTotal > 0 && i < 3 && s.totals.amount > 0) {
+        var labels = ["No. 1", "No. 2", "No. 3"];
+        rankHtml = '<span class="rank">' + labels[i] + '</span>';
+      }
+
+      var ctaText = s.status === "error" ? "View orders" : "View orders";
+
+      card.innerHTML =
+        rankHtml +
+        '<span class="ribbon-school">' + s.name + '</span>' +
+        '<div class="ribbon-stats">' +
+          '<span class="stat-figure"><span class="num">' + s.totals.boxes + '</span><span class="lbl">Boxes</span></span>' +
+          '<span class="stat-figure"><span class="num">' + money(s.totals.amount) + '</span><span class="lbl">Raised</span></span>' +
+        '</div>' +
+        '<span class="ribbon-cta">' + ctaText + '</span>';
+
+      card.addEventListener("click", function () { location.hash = s.slug; });
+      gridEl.appendChild(card);
+    });
+  }
+
+  // ---- render: school detail ---------------------------------------------
+
+  var viewLanding = document.getElementById("view-landing");
+  var viewSchool = document.getElementById("view-school");
+  var nameEl = document.getElementById("school-name");
+  var summaryEl = document.getElementById("school-summary");
+  var tableWrapEl = document.getElementById("school-table-wrap");
+
+  function renderSchool(school) {
+    nameEl.textContent = school.name;
+
+    if (school.status === "loading") {
+      summaryEl.innerHTML = "";
+      tableWrapEl.innerHTML = '<div class="load-msg">Loading orders…</div>';
+      return;
+    }
+    if (school.status === "error") {
+      summaryEl.innerHTML = "";
+      tableWrapEl.innerHTML = '<div class="load-msg error">Couldn\'t load live data for ' + school.name + '. Try "Refresh now" above, or check that the sheet is shared as "Anyone with the link."</div>';
+      return;
+    }
+
+    summaryEl.innerHTML =
+      '<div class="summary-card"><span class="num">' + school.totals.boxes + '</span><span class="lbl">Boxes sold</span></div>' +
+      '<div class="summary-card"><span class="num">' + money(school.totals.amount) + '</span><span class="lbl">Raised</span></div>' +
+      '<div class="summary-card"><span class="num">' + school.totals.sellers + '</span><span class="lbl">Sellers</span></div>';
+
+    if (school.students.length === 0) {
+      tableWrapEl.innerHTML = '<div class="no-orders">No orders logged yet for ' + school.name + '.</div>';
+      return;
+    }
+
+    var rows = school.students.slice().sort(function (a, b) {
+      return (a.last || "").localeCompare(b.last || "") || (a.first || "").localeCompare(b.first || "");
+    }).map(function (s) {
+      return "<tr><td>" + s.first + " " + s.last + "</td>" +
+        "<td>" + (s.email || "") + "</td>" +
+        '<td class="num">' + s.boxes + "</td>" +
+        '<td class="num">' + money(s.amount) + "</td></tr>";
+    }).join("");
+
+    tableWrapEl.innerHTML =
+      '<table class="orders"><thead><tr>' +
+      "<th>Seller</th><th>Email</th><th class=\"num\">Boxes</th><th class=\"num\">Amount</th>" +
+      "</tr></thead><tbody>" + rows + "</tbody></table>";
+  }
+
+  // ---- routing -------------------------------------------------------
+
+  function showLanding() {
+    viewLanding.classList.add("active");
+    viewSchool.classList.remove("active");
+    document.title = "The Cookie Board";
+  }
+
+  function showSchool(slug) {
+    var school = schools.filter(function (s) { return s.slug === slug; })[0];
+    if (!school) { showLanding(); return; }
+    renderSchool(school);
+    viewSchool.classList.add("active");
+    viewLanding.classList.remove("active");
+    document.title = school.name + " — The Cookie Board";
+  }
+
+  function route() {
+    var slug = location.hash.replace(/^#/, "");
+    if (slug) { showSchool(slug); } else { showLanding(); }
+  }
+
+  window.addEventListener("hashchange", route);
+  document.getElementById("back-btn").addEventListener("click", function () { location.hash = ""; });
+
+  renderGrid();
+  route();
+  loadAll();
+</script>
+</body>
+</html>
