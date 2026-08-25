@@ -431,7 +431,7 @@
     summaryEl.innerHTML =
       '<div class="summary-card"><span class="num">' + school.totals.boxes + '</span><span class="lbl">Boxes sold</span></div>' +
       '<div class="summary-card"><span class="num">' + money(school.totals.amount) + '</span><span class="lbl">Raised</span></div>' +
-      '<div class="summary-card"><span class="num">' + school.totals.sellers + '</span><span class="lbl">Sellers</span></div>';
+      '<div class="summary-card"><span class="num">' + school.totals.sellers + '</span><span class="lbl">Students</span></div>';
 
     if (school.students.length === 0) {
       tableWrapEl.innerHTML = '<div class="no-orders">No orders logged yet for ' + school.name + '.</div>';
@@ -449,7 +449,7 @@
 
     tableWrapEl.innerHTML =
       '<table class="orders"><thead><tr>' +
-      "<th>Seller</th><th>Email</th><th class=\"num\">Boxes</th><th class=\"num\">Amount</th>" +
+      "<th>Student</th><th>Email</th><th class=\"num\">Boxes</th><th class=\"num\">Amount</th>" +
       "</tr></thead><tbody>" + rows + "</tbody></table>";
   }
 
