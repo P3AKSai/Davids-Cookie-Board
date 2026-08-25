@@ -310,6 +310,11 @@
     "TJE Dance", "Tuttle", "West Side"
   ];
 
+  // The "$ with Fee" column includes a 5% fee on top of the actual sale
+  // amount. Divide by this before displaying so totals reflect the real
+  // dollar amount raised, not the fee-inclusive figure.
+  var FEE_MULTIPLIER = 1.05;
+
   // For this to work for every visitor (not just people logged into a Google
   // account with access), the sheet needs to be reachable without a login:
   // File > Share > Publish to web (or keep sharing set to
@@ -385,6 +390,7 @@
       var amountRaw = (row[amountIdx] || "").replace(/[^0-9.\-]/g, "");
       var boxes = parseInt(boxesRaw, 10);
       var amount = parseFloat(amountRaw);
+      if (!isNaN(amount)) amount = amount / FEE_MULTIPLIER;
       students.push({
         first: first,
         last: last,
