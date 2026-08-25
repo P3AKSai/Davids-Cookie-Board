@@ -361,6 +361,19 @@
     return n;
   }
 
+  // Currency-formatted cells carry both a raw value (v) and a formatted
+  // display string (f, e.g. "$21.00"). Read the formatted string first —
+  // it's the least ambiguous source for a dollar figure regardless of how
+  // the sheet's formula or number format represents the raw value.
+  function cellCurrency(cell) {
+    if (!cell) return NaN;
+    var fromFormatted = (cell.f !== undefined && cell.f !== null && cell.f !== "")
+      ? parseFloat(String(cell.f).replace(/[^0-9.\-]/g, ""))
+      : NaN;
+    if (!isNaN(fromFormatted)) return fromFormatted;
+    return cellNumber(cell);
+  }
+
   function parseGvizResponse(text) {
     var match = text.match(/setResponse\(([\s\S]*)\);\s*$/);
     if (!match) throw new Error("Unexpected response from the sheet");
@@ -393,7 +406,7 @@
       var last = cellText(cells[lastIdx]);
       if (!first || first === "-") return;
       var boxes = cellNumber(cells[boxesIdx]);
-      var amount = cellNumber(cells[amountIdx]);
+      var amount = cellCurrency(cells[amountIdx]);
       if (!isNaN(amount)) amount = amount / FEE_MULTIPLIER;
       students.push({
         first: first,
