@@ -333,31 +333,15 @@
     return "$" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
-  // ---- CSV parsing -------------------------------------------------------
+  // ---- reading the sheet's structured data feed ---------------------------
+  // We use gviz's JSON feed rather than its CSV feed: JSON hands back each
+  // cell's actual typed value (a real number for "# of Boxes", not text to
+  // re-parse), so currency formatting, stray formula-error cells elsewhere
+  // in the sheet, and punctuation in names/emails can't misalign columns.
 
-  function parseCSV(str) {
-    var rows = [], row = [], field = "", inQuotes = false;
-    for (var i = 0; i < str.length; i++) {
-      var c = str[i], next = str[i + 1];
-      if (inQuotes) {
-        if (c === '"' && next === '"') { field += '"'; i++; }
-        else if (c === '"') { inQuotes = false; }
-        else { field += c; }
-      } else {
-        if (c === '"') { inQuotes = true; }
-        else if (c === ",") { row.push(field); field = ""; }
-        else if (c === "\r") { /* skip */ }
-        else if (c === "\n") { row.push(field); rows.push(row); row = []; field = ""; }
-        else { field += c; }
-      }
-    }
-    if (field.length > 0 || row.length > 0) { row.push(field); rows.push(row); }
-    return rows.filter(function (r) { return r.length > 1 || (r[0] || "").trim() !== ""; });
-  }
-
-  function colIndex(header, keywords) {
-    for (var i = 0; i < header.length; i++) {
-      var h = header[i].toLowerCase();
+  function colIndex(labels, keywords) {
+    for (var i = 0; i < labels.length; i++) {
+      var h = (labels[i] || "").toLowerCase();
       for (var k = 0; k < keywords.length; k++) {
         if (h.indexOf(keywords[k]) > -1) return i;
       }
@@ -365,15 +349,37 @@
     return -1;
   }
 
-  function parseSchoolCSV(text) {
-    var rows = parseCSV(text);
-    if (rows.length === 0) return [];
-    var header = rows[0];
-    var firstIdx = colIndex(header, ["first"]);
-    var lastIdx = colIndex(header, ["last"]);
-    var emailIdx = colIndex(header, ["email"]);
-    var amountIdx = colIndex(header, ["fee", "$"]);
-    var boxesIdx = colIndex(header, ["box"]);
+  function cellText(cell) {
+    if (!cell || cell.v === null || cell.v === undefined) return "";
+    return String(cell.v).trim();
+  }
+
+  function cellNumber(cell) {
+    if (!cell || cell.v === null || cell.v === undefined) return NaN;
+    if (typeof cell.v === "number") return cell.v;
+    var n = parseFloat(String(cell.v).replace(/[^0-9.\-]/g, ""));
+    return n;
+  }
+
+  function parseGvizResponse(text) {
+    var match = text.match(/setResponse\(([\s\S]*)\);\s*$/);
+    if (!match) throw new Error("Unexpected response from the sheet");
+    var data = JSON.parse(match[1]);
+    if (data.status === "error") {
+      var detail = data.errors && data.errors[0] && (data.errors[0].detailed_message || data.errors[0].message);
+      throw new Error(detail || "The sheet rejected the request");
+    }
+    return data.table;
+  }
+
+  function parseSchoolTable(table) {
+    if (!table || !table.cols || !table.rows) return [];
+    var labels = table.cols.map(function (c) { return c.label || ""; });
+    var firstIdx = colIndex(labels, ["first"]);
+    var lastIdx = colIndex(labels, ["last"]);
+    var emailIdx = colIndex(labels, ["email"]);
+    var amountIdx = colIndex(labels, ["fee", "$"]);
+    var boxesIdx = colIndex(labels, ["box"]);
     if (firstIdx === -1) firstIdx = 0;
     if (lastIdx === -1) lastIdx = 1;
     if (emailIdx === -1) emailIdx = 2;
@@ -381,24 +387,22 @@
     if (boxesIdx === -1) boxesIdx = 4;
 
     var students = [];
-    for (var r = 1; r < rows.length; r++) {
-      var row = rows[r];
-      var first = (row[firstIdx] || "").trim();
-      var last = (row[lastIdx] || "").trim();
-      if (!first || first === "-") continue;
-      var boxesRaw = (row[boxesIdx] || "").replace(/[^0-9.\-]/g, "");
-      var amountRaw = (row[amountIdx] || "").replace(/[^0-9.\-]/g, "");
-      var boxes = parseInt(boxesRaw, 10);
-      var amount = parseFloat(amountRaw);
+    table.rows.forEach(function (row) {
+      var cells = row.c || [];
+      var first = cellText(cells[firstIdx]);
+      var last = cellText(cells[lastIdx]);
+      if (!first || first === "-") return;
+      var boxes = cellNumber(cells[boxesIdx]);
+      var amount = cellNumber(cells[amountIdx]);
       if (!isNaN(amount)) amount = amount / FEE_MULTIPLIER;
       students.push({
         first: first,
         last: last,
-        email: (row[emailIdx] || "").trim(),
+        email: cellText(cells[emailIdx]),
         boxes: isNaN(boxes) ? 0 : boxes,
         amount: isNaN(amount) ? 0 : amount
       });
-    }
+    });
     return students;
   }
 
@@ -410,18 +414,19 @@
 
   // ---- fetching ------------------------------------------------------
 
-  function csvUrl(tabName) {
-    return "https://docs.google.com/spreadsheets/d/" + SHEET_ID + "/gviz/tq?tqx=out:csv&sheet=" + encodeURIComponent(tabName) + "&_=" + Date.now();
+  function feedUrl(tabName) {
+    return "https://docs.google.com/spreadsheets/d/" + SHEET_ID + "/gviz/tq?tqx=out:json&headers=1&sheet=" + encodeURIComponent(tabName) + "&_=" + Date.now();
   }
 
   function fetchSchool(school) {
-    return fetch(csvUrl(school.name), { cache: "no-store" })
+    return fetch(feedUrl(school.name), { cache: "no-store" })
       .then(function (res) {
         if (!res.ok) throw new Error("HTTP " + res.status);
         return res.text();
       })
       .then(function (text) {
-        school.students = parseSchoolCSV(text);
+        var table = parseGvizResponse(text);
+        school.students = parseSchoolTable(table);
         school.totals = totalsFor(school.students);
         school.status = "ok";
       })
