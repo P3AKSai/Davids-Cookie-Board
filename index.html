@@ -148,10 +148,78 @@
 
   footer.site { border-top: 1px solid var(--line); padding: 1.5rem 0 2.5rem; font-size: 0.78rem; color: var(--ink-muted); }
   footer.site .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 0.5rem; }
+
+  .gate {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+    background: var(--bg);
+  }
+  .gate-card {
+    width: 100%;
+    max-width: 22rem;
+    background: var(--surface);
+    border: 1px solid var(--line);
+    box-shadow: var(--shadow);
+    padding: 2rem 1.75rem;
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+  }
+  .gate-title {
+    font-family: "Big Shoulders", sans-serif;
+    font-weight: 800;
+    font-size: 2.2rem;
+    line-height: 0.95;
+    text-transform: uppercase;
+    margin: 0.4rem 0 0;
+    text-wrap: balance;
+  }
+  .gate-title em { font-style: normal; color: var(--accent-strong); }
+  .gate-dek { font-size: 0.9rem; color: var(--ink-muted); margin: 0.75rem 0 1.3rem; }
+  .gate-label { font-size: 0.7rem; letter-spacing: 0.07em; text-transform: uppercase; color: var(--ink-muted); margin-bottom: 0.4rem; }
+  .gate-input {
+    font: inherit;
+    font-size: 1rem;
+    padding: 0.65rem 0.8rem;
+    border: 1px solid var(--line-strong);
+    background: var(--bg);
+    color: var(--ink);
+    margin-bottom: 1rem;
+  }
+  .gate-input:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+  .gate-submit {
+    font: inherit;
+    font-weight: 600;
+    font-size: 0.9rem;
+    padding: 0.7rem 1rem;
+    background: var(--ribbon);
+    color: #fdf2e6;
+    border: none;
+    cursor: pointer;
+  }
+  .gate-submit:hover { background: var(--ribbon-strong); }
+  .gate-submit:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+  .gate-error { font-size: 0.82rem; color: var(--warn); min-height: 1.2em; margin: 0.8rem 0 0; }
 </style>
 </head>
 <body>
 
+<div id="gate" class="gate">
+  <form id="gate-form" class="gate-card">
+    <span class="eyebrow">Prestige Fundraising</span>
+    <h1 class="gate-title">The Cookie <em>Board</em></h1>
+    <p class="gate-dek">This board is private. Enter the password to view orders.</p>
+    <label class="gate-label" for="gate-password">Password</label>
+    <input class="gate-input" id="gate-password" type="password" autocomplete="current-password" required>
+    <button class="gate-submit" type="submit">Unlock</button>
+    <p class="gate-error" id="gate-error" role="alert"></p>
+  </form>
+</div>
+
+<div id="app" style="display:none;">
 <header class="site">
   <div class="wrap head-row">
     <div>
@@ -192,6 +260,7 @@
     <span>Live from Google Sheets</span>
   </div>
 </footer>
+</div>
 
 <script>
   // =====================================================================
@@ -442,14 +511,14 @@
       return (a.last || "").localeCompare(b.last || "") || (a.first || "").localeCompare(b.first || "");
     }).map(function (s) {
       return "<tr><td>" + s.first + " " + s.last + "</td>" +
-        "<td>" + (s.email || "") + "</td>" +
         '<td class="num">' + s.boxes + "</td>" +
-        '<td class="num">' + money(s.amount) + "</td></tr>";
+        '<td class="num">' + money(s.amount) + "</td>" +
+        "<td>" + (s.email || "") + "</td></tr>";
     }).join("");
 
     tableWrapEl.innerHTML =
       '<table class="orders"><thead><tr>' +
-      "<th>Student</th><th>Email</th><th class=\"num\">Boxes</th><th class=\"num\">Amount</th>" +
+      "<th>Student</th><th class=\"num\">Boxes</th><th class=\"num\">Amount</th><th>Email</th>" +
       "</tr></thead><tbody>" + rows + "</tbody></table>";
   }
 
@@ -478,9 +547,46 @@
   window.addEventListener("hashchange", route);
   document.getElementById("back-btn").addEventListener("click", function () { location.hash = ""; });
 
-  renderGrid();
-  route();
-  loadAll();
+  // ---- password gate ---------------------------------------------------
+  // Note: this only keeps out casual visitors — the password lives in this
+  // page's source, so anyone who views source can read it. Don't rely on
+  // this to protect anything more sensitive than "don't index this page."
+
+  var GATE_PASSWORD = "PF@2026";
+  var gateEl = document.getElementById("gate");
+  var appEl = document.getElementById("app");
+  var gateForm = document.getElementById("gate-form");
+  var gateInput = document.getElementById("gate-password");
+  var gateError = document.getElementById("gate-error");
+
+  function unlockApp() {
+    gateEl.style.display = "none";
+    appEl.style.display = "";
+    try { sessionStorage.setItem("cookieBoardUnlocked", "1"); } catch (e) {}
+    renderGrid();
+    route();
+    loadAll();
+  }
+
+  gateForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (gateInput.value === GATE_PASSWORD) {
+      unlockApp();
+    } else {
+      gateError.textContent = "That password isn't right — try again.";
+      gateInput.value = "";
+      gateInput.focus();
+    }
+  });
+
+  var alreadyUnlocked = false;
+  try { alreadyUnlocked = sessionStorage.getItem("cookieBoardUnlocked") === "1"; } catch (e) {}
+
+  if (alreadyUnlocked) {
+    unlockApp();
+  } else {
+    gateInput.focus();
+  }
 </script>
 </body>
 </html>
