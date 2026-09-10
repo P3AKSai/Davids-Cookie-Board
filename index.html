@@ -313,7 +313,7 @@
       <div class="summary-row" id="school-summary"></div>
 
       <div id="school-lock" class="gate-card school-lock">
-        <p class="gate-label" id="school-lock-label">This school's password protects student names, boxes, and emails.</p>
+        <p class="gate-label" id="school-lock-label">Enter this school's password to view its orders.</p>
         <form id="school-lock-form">
           <label class="gate-label" for="school-lock-input">Password</label>
           <input class="gate-input" id="school-lock-input" type="password" autocomplete="off" required>
@@ -384,7 +384,7 @@
   // One shared password gating the "All Schools" view (rankings, boxes,
   // and dollars raised across every school). Only the simple landing page
   // is open to everyone; this and every school's roster are locked.
-  var ALL_SCHOOLS_PASSWORD = "PFR@2026";
+  var ALL_SCHOOLS_PASSWORD = "AllSchools2026";
 
   // For this to work for every visitor (not just people logged into a Google
   // account with access), the sheet needs to be reachable without a login:
@@ -728,19 +728,19 @@
       return;
     }
 
-    // Aggregate totals are public — only the row-by-row roster below is
-    // behind that school's password.
-    summaryEl.innerHTML =
-      '<div class="summary-card"><span class="num">' + school.totals.boxes + '</span><span class="lbl">Boxes sold</span></div>' +
-      '<div class="summary-card"><span class="num">' + money(school.totals.amount) + '</span><span class="lbl">Raised</span></div>' +
-      '<div class="summary-card"><span class="num">' + school.totals.sellers + '</span><span class="lbl">Students</span></div>';
-
+    // Nothing about this school — not even the aggregate totals — shows
+    // until its password is entered.
     if (isUnlocked(school.slug)) {
       lockEl.classList.remove("is-visible");
+      summaryEl.innerHTML =
+        '<div class="summary-card"><span class="num">' + school.totals.boxes + '</span><span class="lbl">Boxes sold</span></div>' +
+        '<div class="summary-card"><span class="num">' + money(school.totals.amount) + '</span><span class="lbl">Raised</span></div>' +
+        '<div class="summary-card"><span class="num">' + school.totals.sellers + '</span><span class="lbl">Students</span></div>';
       renderRosterTable(school);
       printBtn.removeAttribute("disabled");
     } else {
       lockEl.classList.add("is-visible");
+      summaryEl.innerHTML = "";
       tableWrapEl.innerHTML = "";
       lockError.textContent = "";
       lockInput.value = "";
