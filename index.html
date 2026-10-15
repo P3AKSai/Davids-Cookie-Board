@@ -92,17 +92,8 @@
   .view.active { display: block; }
   .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.4rem; }
   h2.section-title { font-family: "Big Shoulders", sans-serif; font-weight: 700; font-size: 1.5rem; text-transform: uppercase; letter-spacing: 0.02em; margin: 0; }
-  button.all-schools-btn {
-    font-family: "JetBrains Mono", monospace; font-size: 0.72rem; letter-spacing: 0.04em; text-transform: uppercase;
-    background: var(--surface); border: 1px solid var(--line-strong); color: var(--ink);
-    padding: 0.45rem 0.85rem; cursor: pointer;
-  }
-  button.all-schools-btn:hover { border-color: var(--ribbon); color: var(--ribbon); }
-  button.all-schools-btn:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(15.5rem, 1fr)); gap: 1.5rem 1.25rem; }
-
-  .ribbon-item { position: relative; }
 
   .ribbon {
     position: relative; display: flex; flex-direction: column; background: var(--surface);
@@ -110,7 +101,6 @@
     text-align: left; cursor: pointer; font: inherit; color: inherit;
     clip-path: polygon(0 0, 100% 0, 100% 88%, 50% 100%, 0 88%);
     transition: transform 0.15s ease;
-    width: 100%; height: 100%;
   }
   .ribbon:hover { transform: translateY(-3px); }
   .ribbon:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
@@ -120,7 +110,6 @@
     position: absolute; top: -0.6rem; left: 1.1rem; background: var(--ribbon); color: #fdf2e6;
     font-family: "JetBrains Mono", monospace; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em;
     padding: 0.22rem 0.5rem; box-shadow: 0 2px 6px rgba(0,0,0,0.22);
-    z-index: 1; pointer-events: none;
   }
   .ribbon-school { font-family: "Big Shoulders", sans-serif; font-weight: 700; font-size: 1.3rem; line-height: 1.05; text-transform: uppercase; margin: 0.15rem 0 0.9rem; text-wrap: balance; }
   .ribbon-stats { display: flex; gap: 1.4rem; margin-top: auto; }
@@ -133,10 +122,6 @@
   .ribbon.is-loading .num { color: transparent; background: var(--line); border-radius: 2px; }
   .ribbon.has-error .ribbon-cta { color: var(--warn); }
   .ribbon.has-error .ribbon-cta::after { content: " — unavailable"; }
-
-  .ribbon.simple { clip-path: polygon(0 0, 100% 0, 100% 88%, 50% 100%, 0 88%); padding-bottom: 1.5rem; }
-  .ribbon.simple .ribbon-school { margin-bottom: 0; }
-  .ribbon.simple .ribbon-cta { margin-top: 1rem; }
 
   .empty-note { grid-column: 1 / -1; border: 1px dashed var(--line-strong); padding: 1.4rem; font-size: 0.9rem; color: var(--ink-muted); text-align: center; }
 
@@ -235,22 +220,9 @@
   .gate-submit:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
   .gate-error { font-size: 0.82rem; color: var(--warn); min-height: 1.2em; margin: 0.8rem 0 0; }
 
-  .school-lock {
-    display: none;
-    width: 100%;
-    max-width: 26rem;
-    min-height: 0;
-    margin: 0 0 2rem;
-    padding: 1.5rem 1.75rem;
-    text-align: left;
-  }
-  .school-lock.is-visible { display: flex; }
-  .school-lock .gate-label:first-child { margin-bottom: 1rem; color: var(--ink-muted); }
-  .school-lock form { display: flex; flex-direction: column; }
-
   @media print {
     body { background: #fff; color: #000; }
-    header.site, footer.site, .back, .print-btn, button.refresh, .status-box, .school-lock { display: none !important; }
+    header.site, footer.site, #gate, .back, .print-btn, button.refresh, .status-box { display: none !important; }
     main { padding: 0; }
     .wrap { max-width: none; padding: 0; }
     h2.school-name { color: #000; }
@@ -263,7 +235,19 @@
 </head>
 <body>
 
-<div id="app">
+<div id="gate" class="gate">
+  <form id="gate-form" class="gate-card">
+    <span class="eyebrow">Prestige Fundraising</span>
+    <h1 class="gate-title">The Cookie <em>Board</em></h1>
+    <p class="gate-dek">This board is private. Enter the password to view orders.</p>
+    <label class="gate-label" for="gate-password">Password</label>
+    <input class="gate-input" id="gate-password" type="password" autocomplete="current-password" required>
+    <button class="gate-submit" type="submit">Unlock</button>
+    <p class="gate-error" id="gate-error" role="alert"></p>
+  </form>
+</div>
+
+<div id="app" style="display:none;">
 <header class="site">
   <div class="wrap head-row">
     <div>
@@ -281,30 +265,10 @@
 <main>
   <div class="wrap">
 
-    <section id="view-simple" class="view active">
+    <section id="view-landing" class="view active">
       <div class="section-head">
         <h2 class="section-title">Schools</h2>
-        <button class="all-schools-btn" id="all-schools-btn" type="button">All Schools</button>
       </div>
-      <div class="grid" id="simple-grid"></div>
-    </section>
-
-    <section id="view-landing" class="view">
-      <div class="section-head">
-        <h2 class="section-title">Schools</h2>
-        <button class="all-schools-btn" id="simple-view-btn" type="button">Simple View</button>
-      </div>
-
-      <div id="all-lock" class="gate-card school-lock">
-        <p class="gate-label" id="all-lock-label">Enter the password to view rankings and totals for all schools.</p>
-        <form id="all-lock-form">
-          <label class="gate-label" for="all-lock-input">Password</label>
-          <input class="gate-input" id="all-lock-input" type="password" autocomplete="off" required>
-          <button class="gate-submit" type="submit">View All Schools</button>
-          <p class="gate-error" id="all-lock-error" role="alert"></p>
-        </form>
-      </div>
-
       <div class="grid" id="school-grid"></div>
     </section>
 
@@ -315,17 +279,6 @@
         <button class="print-btn" id="print-btn" type="button">Print list</button>
       </div>
       <div class="summary-row" id="school-summary"></div>
-
-      <div id="school-lock" class="gate-card school-lock">
-        <p class="gate-label" id="school-lock-label">Enter this school's password to view its orders.</p>
-        <form id="school-lock-form">
-          <label class="gate-label" for="school-lock-input">Password</label>
-          <input class="gate-input" id="school-lock-input" type="password" autocomplete="off" required>
-          <button class="gate-submit" type="submit">View roster</button>
-          <p class="gate-error" id="school-lock-error" role="alert"></p>
-        </form>
-      </div>
-
       <div class="table-wrap" id="school-table-wrap"></div>
     </section>
 
@@ -353,7 +306,7 @@
   var SCHOOL_TABS = [
     "Bretton Woods", "Cayuga", "Chippewa", "Cutchogue East",
     "Eastport Elementary", "Eastport South Manor", "Ft Salonga",
-    "Holy Child Academy", "May Moore", "Southold", "Tamarac",
+    "Holy Child Academy", "Ivy League", "May Moore", "Southold", "Tamarac",
     "TJE Dance", "Tuttle", "West Side"
   ];
 
@@ -361,34 +314,6 @@
   // amount. Divide by this before displaying so totals reflect the real
   // dollar amount raised, not the fee-inclusive figure.
   var FEE_MULTIPLIER = 1.05;
-
-  // One password per school, gating that school's student roster (names,
-  // boxes, amounts, emails). The simple landing page (name + "View orders"
-  // button only) stays public for everyone. Just like the old site-wide
-  // password, these live in the page's source, so this is a "keep out
-  // casual visitors" measure, not real security. Change any of these any
-  // time — visitors just re-enter the new one next visit.
-  var SCHOOL_PASSWORDS = {
-    "Bretton Woods": "Bretton01",
-    "Cayuga": "Cayuga10",
-    "Chippewa": "Chippewa05",
-    "Cutchogue East": "Cutchogue04",
-    "Eastport Elementary": "EastportElem08",
-    "Eastport South Manor": "EastportSM09",
-    "Ft Salonga": "FtSalonga02",
-    "Holy Child Academy": "HolyChild07",
-    "May Moore": "MayMoore06",
-    "Southold": "Southold03",
-    "Tamarac": "Tamarac12",
-    "TJE Dance": "TJEDance11",
-    "Tuttle": "Tuttle2026",
-    "West Side": "WestSide13"
-  };
-
-  // One shared password gating the "All Schools" view (rankings, boxes,
-  // and dollars raised across every school). Only the simple landing page
-  // is open to everyone; this and every school's roster are locked.
-  var ALL_SCHOOLS_PASSWORD = "PF#2026";
 
   // For this to work for every visitor (not just people logged into a Google
   // account with access), the sheet needs to be reachable without a login:
@@ -533,7 +458,7 @@
     statusBox.className = "status-box";
     statusText.textContent = "Loading live data…";
     schools.forEach(function (s) { s.status = "loading"; });
-    updateAllLockUI();
+    renderGrid();
 
     return Promise.all(schools.map(fetchSchool)).then(function () {
       var failed = schools.filter(function (s) { return s.status === "error"; }).length;
@@ -548,7 +473,7 @@
         statusText.textContent = "Couldn't reach the order sheet";
       }
       refreshBtn.removeAttribute("disabled");
-      updateAllLockUI();
+      renderGrid();
       route();
     });
   }
@@ -578,17 +503,21 @@
     }
 
     ordered.forEach(function (s, i) {
-      var wrap = document.createElement("div");
-      wrap.className = "ribbon-item";
-
       var card = document.createElement("button");
       card.type = "button";
       card.className = "ribbon" + (s.status === "loading" ? " is-loading" : "") + (s.status === "error" ? " has-error" : "");
       card.setAttribute("data-slug", s.slug);
 
+      var rankHtml = "";
+      if (!anyLoading && grandTotal > 0 && i < 3 && s.totals.amount > 0) {
+        var labels = ["No. 1", "No. 2", "No. 3"];
+        rankHtml = '<span class="rank">' + labels[i] + '</span>';
+      }
+
       var ctaText = s.status === "error" ? "View orders" : "View orders";
 
       card.innerHTML =
+        rankHtml +
         '<span class="ribbon-school">' + s.name + '</span>' +
         '<div class="ribbon-stats">' +
           '<span class="stat-figure"><span class="num">' + s.totals.boxes + '</span><span class="lbl">Boxes</span></span>' +
@@ -597,80 +526,9 @@
         '<span class="ribbon-cta">' + ctaText + '</span>';
 
       card.addEventListener("click", function () { location.hash = s.slug; });
-      wrap.appendChild(card);
-
-      if (!anyLoading && grandTotal > 0 && i < 3 && s.totals.amount > 0) {
-        var labels = ["No. 1", "No. 2", "No. 3"];
-        var rankEl = document.createElement("span");
-        rankEl.className = "rank";
-        rankEl.textContent = labels[i];
-        wrap.appendChild(rankEl);
-      }
-
-      gridEl.appendChild(wrap);
+      gridEl.appendChild(card);
     });
   }
-
-  // ---- render: simple landing grid ---------------------------------------
-
-  var simpleGridEl = document.getElementById("simple-grid");
-
-  function renderSimpleGrid() {
-    simpleGridEl.innerHTML = "";
-    schools.forEach(function (s) {
-      var card = document.createElement("button");
-      card.type = "button";
-      card.className = "ribbon simple";
-      card.setAttribute("data-slug", s.slug);
-      card.innerHTML =
-        '<span class="ribbon-school">' + s.name + '</span>' +
-        '<span class="ribbon-cta">View orders</span>';
-      card.addEventListener("click", function () { location.hash = s.slug; });
-      simpleGridEl.appendChild(card);
-    });
-  }
-
-  // ---- gate: All Schools view --------------------------------------------
-
-  var allLockEl = document.getElementById("all-lock");
-  var allLockForm = document.getElementById("all-lock-form");
-  var allLockInput = document.getElementById("all-lock-input");
-  var allLockError = document.getElementById("all-lock-error");
-
-  function isAllUnlocked() {
-    try { return sessionStorage.getItem("cookieBoardUnlocked:all") === "1"; } catch (e) { return false; }
-  }
-
-  function markAllUnlocked() {
-    try { sessionStorage.setItem("cookieBoardUnlocked:all", "1"); } catch (e) {}
-  }
-
-  // Renders the grid only once the shared password has been entered —
-  // rankings, boxes, and dollars raised for every school stay out of the
-  // DOM entirely until then, not just visually hidden.
-  function updateAllLockUI() {
-    if (isAllUnlocked()) {
-      allLockEl.classList.remove("is-visible");
-      renderGrid();
-    } else {
-      allLockEl.classList.add("is-visible");
-      gridEl.innerHTML = "";
-    }
-  }
-
-  allLockForm.addEventListener("submit", function (e) {
-    e.preventDefault();
-    if (allLockInput.value === ALL_SCHOOLS_PASSWORD) {
-      markAllUnlocked();
-      allLockError.textContent = "";
-      allLockInput.value = "";
-      updateAllLockUI();
-    } else {
-      allLockError.textContent = "That password isn't right — try again.";
-      allLockInput.value = "";
-      allLockInput.focus();
-    }
-  });
 
   // ---- render: school detail ---------------------------------------------
 
@@ -679,30 +537,26 @@
   var nameEl = document.getElementById("school-name");
   var summaryEl = document.getElementById("school-summary");
   var tableWrapEl = document.getElementById("school-table-wrap");
-  var printBtn = document.getElementById("print-btn");
-  var lockEl = document.getElementById("school-lock");
-  var lockForm = document.getElementById("school-lock-form");
-  var lockInput = document.getElementById("school-lock-input");
-  var lockError = document.getElementById("school-lock-error");
-  var currentSchool = null;
 
-  // Per-school unlock state lives in sessionStorage, keyed by slug, so a
-  // visitor who enters one school's password isn't automatically shown
-  // every other school's roster too. The one exception: whoever knows the
-  // All Schools password can view any school's roster without also
-  // knowing that school's individual password.
-  function unlockedKey(slug) { return "cookieBoardUnlocked:" + slug; }
+  function renderSchool(school) {
+    nameEl.textContent = school.name;
 
-  function isUnlocked(slug) {
-    if (isAllUnlocked()) return true;
-    try { return sessionStorage.getItem(unlockedKey(slug)) === "1"; } catch (e) { return false; }
-  }
+    if (school.status === "loading") {
+      summaryEl.innerHTML = "";
+      tableWrapEl.innerHTML = '<div class="load-msg">Loading orders…</div>';
+      return;
+    }
+    if (school.status === "error") {
+      summaryEl.innerHTML = "";
+      tableWrapEl.innerHTML = '<div class="load-msg error">Couldn\'t load live data for ' + school.name + '. Try "Refresh now" above, or check that the sheet is shared as "Anyone with the link."</div>';
+      return;
+    }
 
-  function markUnlocked(slug) {
-    try { sessionStorage.setItem(unlockedKey(slug), "1"); } catch (e) {}
-  }
+    summaryEl.innerHTML =
+      '<div class="summary-card"><span class="num">' + school.totals.boxes + '</span><span class="lbl">Boxes sold</span></div>' +
+      '<div class="summary-card"><span class="num">' + money(school.totals.amount) + '</span><span class="lbl">Raised</span></div>' +
+      '<div class="summary-card"><span class="num">' + school.totals.sellers + '</span><span class="lbl">Students</span></div>';
 
-  function renderRosterTable(school) {
     if (school.students.length === 0) {
       tableWrapEl.innerHTML = '<div class="no-orders">No orders logged yet for ' + school.name + '.</div>';
       return;
@@ -723,116 +577,72 @@
       "</tr></thead><tbody>" + rows + "</tbody></table>";
   }
 
-  function renderSchool(school) {
-    nameEl.textContent = school.name;
-
-    if (school.status === "loading") {
-      summaryEl.innerHTML = "";
-      lockEl.classList.remove("is-visible");
-      tableWrapEl.innerHTML = '<div class="load-msg">Loading orders…</div>';
-      printBtn.setAttribute("disabled", "disabled");
-      return;
-    }
-    if (school.status === "error") {
-      summaryEl.innerHTML = "";
-      lockEl.classList.remove("is-visible");
-      tableWrapEl.innerHTML = '<div class="load-msg error">Couldn\'t load live data for ' + school.name + '. Try "Refresh now" above, or check that the sheet is shared as "Anyone with the link."</div>';
-      printBtn.setAttribute("disabled", "disabled");
-      return;
-    }
-
-    // Nothing about this school — not even the aggregate totals — shows
-    // until its password is entered.
-    if (isUnlocked(school.slug)) {
-      lockEl.classList.remove("is-visible");
-      summaryEl.innerHTML =
-        '<div class="summary-card"><span class="num">' + school.totals.boxes + '</span><span class="lbl">Boxes sold</span></div>' +
-        '<div class="summary-card"><span class="num">' + money(school.totals.amount) + '</span><span class="lbl">Raised</span></div>' +
-        '<div class="summary-card"><span class="num">' + school.totals.sellers + '</span><span class="lbl">Students</span></div>';
-      renderRosterTable(school);
-      printBtn.removeAttribute("disabled");
-    } else {
-      lockEl.classList.add("is-visible");
-      summaryEl.innerHTML = "";
-      tableWrapEl.innerHTML = "";
-      lockError.textContent = "";
-      lockInput.value = "";
-      printBtn.setAttribute("disabled", "disabled");
-    }
-  }
-
-  lockForm.addEventListener("submit", function (e) {
-    e.preventDefault();
-    if (!currentSchool) return;
-    var expected = SCHOOL_PASSWORDS[currentSchool.name];
-    if (expected !== undefined && lockInput.value === expected) {
-      markUnlocked(currentSchool.slug);
-      renderSchool(currentSchool);
-    } else {
-      lockError.textContent = "That password isn't right — try again.";
-      lockInput.value = "";
-      lockInput.focus();
-    }
-  });
-
   // ---- routing -------------------------------------------------------
 
-  var viewSimple = document.getElementById("view-simple");
-  var lastListView = "simple";
-
-  function showSimple() {
-    lastListView = "simple";
-    viewSimple.classList.add("active");
-    viewLanding.classList.remove("active");
-    viewSchool.classList.remove("active");
-    document.title = "The Cookie Board";
-  }
-
   function showLanding() {
-    lastListView = "all";
-    updateAllLockUI();
     viewLanding.classList.add("active");
-    viewSimple.classList.remove("active");
     viewSchool.classList.remove("active");
     document.title = "The Cookie Board";
   }
 
   function showSchool(slug) {
     var school = schools.filter(function (s) { return s.slug === slug; })[0];
-    if (!school) { showSimple(); return; }
-    currentSchool = school;
+    if (!school) { showLanding(); return; }
     renderSchool(school);
-    backBtn.textContent = lastListView === "all" ? "All schools" : "Schools";
     viewSchool.classList.add("active");
-    viewSimple.classList.remove("active");
     viewLanding.classList.remove("active");
     document.title = school.name + " — The Cookie Board";
   }
 
   function route() {
     var slug = location.hash.replace(/^#/, "");
-    if (slug === "all") { showLanding(); }
-    else if (slug) { showSchool(slug); }
-    else { showSimple(); }
+    if (slug) { showSchool(slug); } else { showLanding(); }
   }
 
   window.addEventListener("hashchange", route);
-  var backBtn = document.getElementById("back-btn");
-  backBtn.addEventListener("click", function () { location.hash = lastListView === "all" ? "all" : ""; });
+  document.getElementById("back-btn").addEventListener("click", function () { location.hash = ""; });
   document.getElementById("print-btn").addEventListener("click", function () { window.print(); });
-  document.getElementById("all-schools-btn").addEventListener("click", function () { location.hash = "all"; });
-  document.getElementById("simple-view-btn").addEventListener("click", function () { location.hash = ""; });
 
-  // ---- start -----------------------------------------------------------
-  // Note: per-school passwords only keep out casual visitors — they live
-  // in this page's source, so anyone who views source can read them.
-  // Don't rely on this to protect anything more sensitive than "don't
-  // publicly index this student's info."
+  // ---- password gate ---------------------------------------------------
+  // Note: this only keeps out casual visitors — the password lives in this
+  // page's source, so anyone who views source can read it. Don't rely on
+  // this to protect anything more sensitive than "don't index this page."
 
-  renderSimpleGrid();
-  updateAllLockUI();
-  route();
-  loadAll();
+  var GATE_PASSWORD = "PF@2026";
+  var gateEl = document.getElementById("gate");
+  var appEl = document.getElementById("app");
+  var gateForm = document.getElementById("gate-form");
+  var gateInput = document.getElementById("gate-password");
+  var gateError = document.getElementById("gate-error");
+
+  function unlockApp() {
+    gateEl.style.display = "none";
+    appEl.style.display = "";
+    try { sessionStorage.setItem("cookieBoardUnlocked", "1"); } catch (e) {}
+    renderGrid();
+    route();
+    loadAll();
+  }
+
+  gateForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    if (gateInput.value === GATE_PASSWORD) {
+      unlockApp();
+    } else {
+      gateError.textContent = "That password isn't right — try again.";
+      gateInput.value = "";
+      gateInput.focus();
+    }
+  });
+
+  var alreadyUnlocked = false;
+  try { alreadyUnlocked = sessionStorage.getItem("cookieBoardUnlocked") === "1"; } catch (e) {}
+
+  if (alreadyUnlocked) {
+    unlockApp();
+  } else {
+    gateInput.focus();
+  }
 </script>
 </body>
 </html>
