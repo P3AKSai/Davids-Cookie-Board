@@ -74,7 +74,7 @@
   p.dek { max-width: 42rem; margin: 0.9rem 0 0; font-size: 1.02rem; color: var(--ink-muted); }
   p.dek strong { color: var(--ink); font-weight: 600; }
 
-  .status-box { text-align: right; font-family: "JetBrains Mono", monospace; font-size: 0.74rem; color: var(--ink-muted); }
+  .status-box { text-align: right; font-family: "JetBrains Mono", monospace; font-size: 0.74rem; color: var(--ink-muted); max-width: 24rem; }
   .status-box .dot { display: inline-block; width: 0.5rem; height: 0.5rem; border-radius: 50%; margin-right: 0.4rem; background: var(--ink-muted); }
   .status-box.live .dot { background: var(--ok); }
   .status-box.error .dot { background: var(--warn); }
@@ -590,7 +590,14 @@
     return "https://docs.google.com/spreadsheets/d/" + sheetId + "/gviz/tq?tqx=out:json&headers=1&sheet=" + encodeURIComponent(tabName) + "&_=" + Date.now();
   }
 
-  function fetchSchool(school) {
+  // Google turns away some requests when too many arrive at once, so
+  // each tab is retried a few times with a short pause before giving up.
+  var MAX_TRIES = 4;
+
+  function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+  function fetchSchool(school, attempt) {
+    attempt = attempt || 1;
     return fetch(feedUrl(school.program.sheetId, school.name), { cache: "no-store" })
       .then(function (res) {
         if (!res.ok) throw new Error("HTTP " + res.status);
@@ -601,11 +608,30 @@
         school.students = parseSchoolTable(table, school.program.feeMultiplier, !!school.program.unit);
         school.totals = totalsFor(school.students);
         school.status = "ok";
+        school.error = "";
       })
       .catch(function (err) {
+        if (attempt < MAX_TRIES) {
+          return wait(700 * attempt + Math.random() * 500).then(function () { return fetchSchool(school, attempt + 1); });
+        }
         school.status = "error";
         school.error = err.message;
       });
+  }
+
+  // Loads a few tabs at a time instead of all at once.
+  var CONCURRENCY = 5;
+
+  function fetchAllLimited(list) {
+    var i = 0;
+    function worker() {
+      if (i >= list.length) return Promise.resolve();
+      var school = list[i++];
+      return fetchSchool(school).then(worker);
+    }
+    var workers = [];
+    for (var w = 0; w < Math.min(CONCURRENCY, list.length); w++) workers.push(worker());
+    return Promise.all(workers);
   }
 
   var statusBox = document.getElementById("status-box");
@@ -629,17 +655,20 @@
     p.schools.forEach(function (s) { s.status = "loading"; });
     if (p === program) updateAllLockUI();
 
-    return Promise.all(p.schools.map(fetchSchool)).then(function () {
-      var failed = p.schools.filter(function (s) { return s.status === "error"; }).length;
+    return fetchAllLimited(p.schools).then(function () {
+      var failedList = p.schools.filter(function (s) { return s.status === "error"; });
+      var failed = failedList.length;
       if (failed === 0) {
         setStatus(p, "status-box live", "Live \u2014 updated " + new Date().toLocaleTimeString());
       } else if (failed < p.schools.length) {
-        setStatus(p, "status-box error", failed + " of " + p.schools.length + " schools failed to load");
+        setStatus(p, "status-box error", failed + " of " + p.schools.length + " schools failed to load: " +
+          failedList.map(function (s) { return s.name; }).join(", "));
       } else {
         setStatus(p, "status-box error", "Couldn't reach the order sheet");
       }
       if (p === program) {
         refreshBtn.removeAttribute("disabled");
+        renderSimpleGrid();
         updateAllLockUI();
         route();
       }
@@ -713,7 +742,7 @@
     schools.forEach(function (s) {
       var card = document.createElement("button");
       card.type = "button";
-      card.className = "ribbon simple";
+      card.className = "ribbon simple" + (s.status === "error" ? " has-error" : "");
       card.setAttribute("data-slug", s.slug);
       card.innerHTML =
         '<span class="ribbon-school">' + s.name + '</span>' +
@@ -829,7 +858,7 @@
     if (school.status === "error") {
       summaryEl.innerHTML = "";
       lockEl.classList.remove("is-visible");
-      tableWrapEl.innerHTML = '<div class="load-msg error">Couldn\'t load live data for ' + school.name + '. Try "Refresh now" above, or check that the sheet is shared as "Anyone with the link."</div>';
+      tableWrapEl.innerHTML = '<div class="load-msg error">Couldn\'t load live data for ' + school.name + '. Try "Refresh now" above. If it keeps failing, check that the sheet has a tab named exactly "' + school.name + '" and is shared as "Anyone with the link." (Google said: ' + (school.error || "no details") + ')</div>';
       printBtn.setAttribute("disabled", "disabled");
       return;
     }
