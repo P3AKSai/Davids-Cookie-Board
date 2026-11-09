@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>The Cookie Board</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍪</text></svg>">
+<link rel="icon" id="favicon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍪</text></svg>">
 
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Big+Shoulders:opsz,wght@10..72,500;10..72,700;10..72,800;10..72,900&family=Libre+Franklin:ital,wght@0,400;0,500;0,600;0,700;1,500&family=JetBrains+Mono:wght@400;500;700&display=swap');
@@ -98,6 +98,16 @@
     padding: 0.45rem 0.85rem; cursor: pointer;
   }
   button.all-schools-btn:hover { border-color: var(--ribbon); color: var(--ribbon); }
+
+  .program-switch { display: inline-flex; flex-wrap: wrap; margin-top: 1.2rem; border: 1px solid var(--line-strong); background: var(--surface); }
+  .program-switch button {
+    font-family: "JetBrains Mono", monospace; font-size: 0.74rem; font-weight: 500; letter-spacing: 0.06em; text-transform: uppercase;
+    background: transparent; border: 0; color: var(--ink-muted); padding: 0.6rem 1.1rem; min-height: 44px; cursor: pointer;
+  }
+  .program-switch button + button { border-left: 1px solid var(--line-strong); }
+  .program-switch button:hover { color: var(--ribbon); }
+  .program-switch button[aria-pressed="true"] { background: var(--ribbon); color: var(--surface); }
+  .program-switch button:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
   button.all-schools-btn:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
 
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(15.5rem, 1fr)); gap: 1.5rem 1.25rem; }
@@ -250,7 +260,7 @@
 
   @media print {
     body { background: #fff; color: #000; }
-    header.site, footer.site, .back, .print-btn, button.refresh, .status-box, .school-lock { display: none !important; }
+    header.site, footer.site, .back, .print-btn, button.refresh, .status-box, .school-lock, .program-switch { display: none !important; }
     main { padding: 0; }
     .wrap { max-width: none; padding: 0; }
     h2.school-name { color: #000; }
@@ -268,8 +278,9 @@
   <div class="wrap head-row">
     <div>
       <span class="eyebrow">Prestige Fundraising</span>
-      <h1 class="title">The Cookie <em>Board</em></h1>
+      <h1 class="title" id="board-title">The Cookie <em>Board</em></h1>
       <p class="dek">Transforming the way schools raise funds&mdash;with prestige, purpose, and continuous engagement that keeps momentum going all year round.</p>
+      <div class="program-switch" id="program-switch" role="group" aria-label="Choose a program"></div>
     </div>
     <div class="status-box" id="status-box">
       <span><span class="dot"></span><span id="status-text">Loading live data…</span></span><br>
@@ -334,7 +345,7 @@
 
 <footer class="site">
   <div class="wrap">
-    <span>Prestige Fundraising &times; David's Cookies</span>
+    <span id="footer-program">Prestige Fundraising &times; David's Cookies</span>
     <span>Live from Google Sheets</span>
   </div>
 </footer>
@@ -342,32 +353,67 @@
 
 <script>
   // =====================================================================
-  //  CONFIG — edit these two things if the sheet ever changes.
+  //  CONFIG — one entry per program. Edit these if a sheet ever changes.
   // =====================================================================
+  //
+  //  sheetId   — from the sheet's URL: docs.google.com/spreadsheets/d/THIS_PART/edit
+  //  tabs      — one per school; each must match the sheet's tab name exactly
+  //  feeMultiplier — the "$ with Fee" column includes a 5% fee; amounts are
+  //              divided by this so totals show the real dollars raised.
+  //              Set to 1 for a program whose sheet has no fee built in.
+  //  unit      — what's being counted ("Boxes"), or null if the sheet only
+  //              tracks dollars (that column is then hidden)
+  //
+  //  Each sheet must be viewable without a login: Share > "Anyone with the
+  //  link — Viewer" (or File > Share > Publish to web).
 
-  // The spreadsheet ID from its URL:
-  // https://docs.google.com/spreadsheets/d/THIS_PART/edit
-  var SHEET_ID = "1Q1zfI8AiMhjYfuJV_ykWiTM46TnC8o7SbnodjsRba2Y";
+  var PROGRAMS = {
+    cookies: {
+      label: "David's Cookies",
+      titleHtml: "The Cookie <em>Board</em>",
+      docTitle: "The Cookie Board",
+      footer: "Prestige Fundraising × David's Cookies",
+      icon: "🍪",
+      sheetId: "1Q1zfI8AiMhjYfuJV_ykWiTM46TnC8o7SbnodjsRba2Y",
+      tabs: [
+        "Bretton Woods", "Cayuga", "Chippewa", "Cutchogue East",
+        "Eastport Elementary", "Eastport South Manor", "Ft Salonga",
+        "Holy Child Academy", "Ivy League", "May Moore", "Southold", "Tamarac",
+        "TJE Dance", "Tuttle", "West Side"
+      ],
+      feeMultiplier: 1.05,
+      unit: "Boxes"
+    },
+    boutique: {
+      label: "Holiday Boutique",
+      titleHtml: "The Boutique <em>Board</em>",
+      docTitle: "The Boutique Board",
+      footer: "Prestige Fundraising × Holiday Boutique",
+      icon: "🎁",
+      sheetId: "1oGnnbZe3zmpDrKPiNL6SVaGQ96vmMusrZZEUTcOKb1Y",
+      tabs: [
+        "Barton", "Bellport MS", "Berry Hill", "Bretton Woods", "Cayuga",
+        "Chippewa", "Clinton", "Covert", "East Long Beach",
+        "East Moriches Elementary", "East Moriches Middle School", "Eastport",
+        "Frank P Long Inter.", "Fort Salonga", "Great Neck Rd", "Indian Hollow",
+        "Ivy League", "James A Dever", "John F Kennedy MS", "John Lewis Childs",
+        "John Pearl", "Judy Jacobs Parkway", "Minnesauke", "MG Vedder",
+        "Nassakeag", "Norwood", "Parkview", "Steele", "Stratford", "Southwest",
+        "Terryville", "Tuttle", "Vern Critz", "West Long Beach", "West End",
+        "Woodward"
+      ],
+      feeMultiplier: 1.05,
+      unit: null   // this sheet has no quantity column — dollars only
+    }
+  };
 
-  // One entry per tab in the sheet. The "name" must match the tab name exactly.
-  var SCHOOL_TABS = [
-    "Bretton Woods", "Cayuga", "Chippewa", "Cutchogue East",
-    "Eastport Elementary", "Eastport South Manor", "Ft Salonga",
-    "Holy Child Academy", "Ivy League", "May Moore", "Southold", "Tamarac",
-    "TJE Dance", "Tuttle", "West Side"
-  ];
+  // The program shown when the URL doesn't name one.
+  var DEFAULT_PROGRAM = "cookies";
 
-  // The "$ with Fee" column includes a 5% fee on top of the actual sale
-  // amount. Divide by this before displaying so totals reflect the real
-  // dollar amount raised, not the fee-inclusive figure.
-  var FEE_MULTIPLIER = 1.05;
-
-  // One password per school, gating that school's student roster (names,
-  // boxes, amounts, emails). The simple landing page (name + "View orders"
-  // button only) stays public for everyone. Just like the old site-wide
-  // password, these live in the page's source, so this is a "keep out
-  // casual visitors" measure, not real security. Change any of these any
-  // time — visitors just re-enter the new one next visit.
+  // One password per school. The same password opens that school's roster
+  // in every program. Like everything here, these live in the page's
+  // source, so this is a "keep out casual visitors" measure, not real
+  // security. A school added to a program's tabs needs an entry here too.
   var SCHOOL_PASSWORDS = {
     "Bretton Woods": "Bretton01",
     "Cayuga": "Cayuga10",
@@ -383,23 +429,60 @@
     "Tamarac": "Tamarac12",
     "TJE Dance": "TJEDance11",
     "Tuttle": "Tuttle2026",
-    "West Side": "WestSide13"
+    "West Side": "WestSide13",
+
+    // Holiday Boutique schools
+    "Barton": "Barton15",
+    "Bellport MS": "BellportMS16",
+    "Berry Hill": "BerryHill17",
+    "Clinton": "Clinton18",
+    "Covert": "Covert19",
+    "East Long Beach": "EastLB20",
+    "East Moriches Elementary": "EMorichesElem21",
+    "East Moriches Middle School": "EMorichesMS22",
+    "Eastport": "Eastport23",
+    "Frank P Long Inter.": "FrankPLong24",
+    "Fort Salonga": "FtSalonga02",
+    "Great Neck Rd": "GreatNeck25",
+    "Indian Hollow": "IndianHollow26",
+    "James A Dever": "JADever27",
+    "John F Kennedy MS": "JFKennedy28",
+    "John Lewis Childs": "JLChilds29",
+    "John Pearl": "JohnPearl30",
+    "Judy Jacobs Parkway": "JJParkway31",
+    "Minnesauke": "Minnesauke32",
+    "MG Vedder": "MGVedder33",
+    "Nassakeag": "Nassakeag34",
+    "Norwood": "Norwood35",
+    "Parkview": "Parkview36",
+    "Steele": "Steele37",
+    "Stratford": "Stratford38",
+    "Southwest": "Southwest39",
+    "Terryville": "Terryville40",
+    "Vern Critz": "VernCritz41",
+    "West Long Beach": "WestLB42",
+    "West End": "WestEnd43",
+    "Woodward": "Woodward44"
   };
 
-  // One shared password gating the "All Schools" view (rankings, boxes,
-  // and dollars raised across every school). Only the simple landing page
-  // is open to everyone; this and every school's roster are locked.
+  // Admin password: opens the ranked All Schools view and every school's
+  // roster, in every program.
   var ALL_SCHOOLS_PASSWORD = "PF#2026";
-
-  // For this to work for every visitor (not just people logged into a Google
-  // account with access), the sheet needs to be reachable without a login:
-  // File > Share > Publish to web (or keep sharing set to
-  // "Anyone with the link — Viewer") in Google Sheets.
   // =====================================================================
 
-  var schools = SCHOOL_TABS.map(function (name) {
-    return { name: name, slug: slugify(name), students: [], totals: { boxes: 0, amount: 0, sellers: 0 }, status: "loading" };
+  Object.keys(PROGRAMS).forEach(function (key) {
+    var p = PROGRAMS[key];
+    p.key = key;
+    p.loaded = false;
+    p.statusClass = "status-box";
+    p.statusText = "Loading live data…";
+    p.schools = p.tabs.map(function (name) {
+      return { name: name, slug: slugify(name), program: p, students: [], totals: { boxes: 0, amount: 0, sellers: 0 }, status: "loading" };
+    });
   });
+
+  var program = null;   // the program currently on screen
+  var schools = [];     // that program's schools
 
   function slugify(name) {
     return name.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
@@ -461,14 +544,14 @@
     return data.table;
   }
 
-  function parseSchoolTable(table) {
+  function parseSchoolTable(table, feeMultiplier, hasQty) {
     if (!table || !table.cols || !table.rows) return [];
     var labels = table.cols.map(function (c) { return c.label || ""; });
     var firstIdx = colIndex(labels, ["first"]);
     var lastIdx = colIndex(labels, ["last"]);
     var emailIdx = colIndex(labels, ["email"]);
-    var amountIdx = colIndex(labels, ["fee", "$"]);
-    var boxesIdx = colIndex(labels, ["box"]);
+    var amountIdx = colIndex(labels, ["fee", "$", "amount", "total", "price"]);
+    var boxesIdx = colIndex(labels, ["box", "item", "qty", "quantity", "#"]);
     if (firstIdx === -1) firstIdx = 0;
     if (lastIdx === -1) lastIdx = 1;
     if (emailIdx === -1) emailIdx = 2;
@@ -481,9 +564,9 @@
       var first = cellText(cells[firstIdx]);
       var last = cellText(cells[lastIdx]);
       if (!first || first === "-") return;
-      var boxes = cellNumber(cells[boxesIdx]);
+      var boxes = hasQty ? cellNumber(cells[boxesIdx]) : 0;
       var amount = cellCurrency(cells[amountIdx]);
-      if (!isNaN(amount)) amount = amount / FEE_MULTIPLIER;
+      if (!isNaN(amount)) amount = amount / feeMultiplier;
       students.push({
         first: first,
         last: last,
@@ -503,19 +586,19 @@
 
   // ---- fetching ------------------------------------------------------
 
-  function feedUrl(tabName) {
-    return "https://docs.google.com/spreadsheets/d/" + SHEET_ID + "/gviz/tq?tqx=out:json&headers=1&sheet=" + encodeURIComponent(tabName) + "&_=" + Date.now();
+  function feedUrl(sheetId, tabName) {
+    return "https://docs.google.com/spreadsheets/d/" + sheetId + "/gviz/tq?tqx=out:json&headers=1&sheet=" + encodeURIComponent(tabName) + "&_=" + Date.now();
   }
 
   function fetchSchool(school) {
-    return fetch(feedUrl(school.name), { cache: "no-store" })
+    return fetch(feedUrl(school.program.sheetId, school.name), { cache: "no-store" })
       .then(function (res) {
         if (!res.ok) throw new Error("HTTP " + res.status);
         return res.text();
       })
       .then(function (text) {
         var table = parseGvizResponse(text);
-        school.students = parseSchoolTable(table);
+        school.students = parseSchoolTable(table, school.program.feeMultiplier, !!school.program.unit);
         school.totals = totalsFor(school.students);
         school.status = "ok";
       })
@@ -529,32 +612,41 @@
   var statusText = document.getElementById("status-text");
   var refreshBtn = document.getElementById("refresh-btn");
 
-  function loadAll() {
-    refreshBtn.setAttribute("disabled", "disabled");
-    statusBox.className = "status-box";
-    statusText.textContent = "Loading live data…";
-    schools.forEach(function (s) { s.status = "loading"; });
-    updateAllLockUI();
+  function setStatus(p, cls, text) {
+    p.statusClass = cls;
+    p.statusText = text;
+    if (p === program) {
+      statusBox.className = cls;
+      statusText.textContent = text;
+    }
+  }
 
-    return Promise.all(schools.map(fetchSchool)).then(function () {
-      var failed = schools.filter(function (s) { return s.status === "error"; }).length;
+  function loadAll(p) {
+    p = p || program;
+    p.loaded = true;
+    if (p === program) refreshBtn.setAttribute("disabled", "disabled");
+    setStatus(p, "status-box", "Loading live data\u2026");
+    p.schools.forEach(function (s) { s.status = "loading"; });
+    if (p === program) updateAllLockUI();
+
+    return Promise.all(p.schools.map(fetchSchool)).then(function () {
+      var failed = p.schools.filter(function (s) { return s.status === "error"; }).length;
       if (failed === 0) {
-        statusBox.className = "status-box live";
-        statusText.textContent = "Live — updated " + new Date().toLocaleTimeString();
-      } else if (failed < schools.length) {
-        statusBox.className = "status-box error";
-        statusText.textContent = failed + " of " + schools.length + " schools failed to load";
+        setStatus(p, "status-box live", "Live \u2014 updated " + new Date().toLocaleTimeString());
+      } else if (failed < p.schools.length) {
+        setStatus(p, "status-box error", failed + " of " + p.schools.length + " schools failed to load");
       } else {
-        statusBox.className = "status-box error";
-        statusText.textContent = "Couldn't reach the order sheet";
+        setStatus(p, "status-box error", "Couldn't reach the order sheet");
       }
-      refreshBtn.removeAttribute("disabled");
-      updateAllLockUI();
-      route();
+      if (p === program) {
+        refreshBtn.removeAttribute("disabled");
+        updateAllLockUI();
+        route();
+      }
     });
   }
 
-  refreshBtn.addEventListener("click", loadAll);
+  refreshBtn.addEventListener("click", function () { loadAll(program); });
 
   // ---- render: landing grid ---------------------------------------------
 
@@ -574,7 +666,7 @@
     if (!anyLoading && grandTotal === 0 && schools.every(function (s) { return s.status === "ok"; })) {
       var note = document.createElement("div");
       note.className = "empty-note";
-      note.textContent = "The fundraiser board is set — orders haven't been logged yet. Check back once boxes start selling.";
+      note.textContent = "The fundraiser board is set — orders haven't been logged yet. Check back once sales start coming in.";
       gridEl.appendChild(note);
     }
 
@@ -592,12 +684,12 @@
       card.innerHTML =
         '<span class="ribbon-school">' + s.name + '</span>' +
         '<div class="ribbon-stats">' +
-          '<span class="stat-figure"><span class="num">' + s.totals.boxes + '</span><span class="lbl">Boxes</span></span>' +
+          (program.unit ? '<span class="stat-figure"><span class="num">' + s.totals.boxes + '</span><span class="lbl">' + program.unit + '</span></span>' : '') +
           '<span class="stat-figure"><span class="num">' + money(s.totals.amount) + '</span><span class="lbl">Raised</span></span>' +
         '</div>' +
         '<span class="ribbon-cta">' + ctaText + '</span>';
 
-      card.addEventListener("click", function () { location.hash = s.slug; });
+      card.addEventListener("click", function () { location.hash = hashFor(s.slug); });
       wrap.appendChild(card);
 
       if (!anyLoading && grandTotal > 0 && i < 3 && s.totals.amount > 0) {
@@ -626,7 +718,7 @@
       card.innerHTML =
         '<span class="ribbon-school">' + s.name + '</span>' +
         '<span class="ribbon-cta">View orders</span>';
-      card.addEventListener("click", function () { location.hash = s.slug; });
+      card.addEventListener("click", function () { location.hash = hashFor(s.slug); });
       simpleGridEl.appendChild(card);
     });
   }
@@ -713,14 +805,14 @@
       return (a.last || "").localeCompare(b.last || "") || (a.first || "").localeCompare(b.first || "");
     }).map(function (s) {
       return "<tr><td>" + s.first + " " + s.last + "</td>" +
-        '<td class="num">' + s.boxes + "</td>" +
+        (program.unit ? '<td class="num">' + s.boxes + "</td>" : "") +
         '<td class="num">' + money(s.amount) + "</td>" +
         "<td>" + (s.email || "") + "</td></tr>";
     }).join("");
 
     tableWrapEl.innerHTML =
       '<table class="orders"><thead><tr>' +
-      "<th>Student</th><th class=\"num\">Boxes</th><th class=\"num\">Amount</th><th>Email</th>" +
+      "<th>Student</th>" + (program.unit ? "<th class=\"num\">" + program.unit + "</th>" : "") + "<th class=\"num\">Amount</th><th>Email</th>" +
       "</tr></thead><tbody>" + rows + "</tbody></table>";
   }
 
@@ -747,7 +839,7 @@
     if (isUnlocked(school.slug)) {
       lockEl.classList.remove("is-visible");
       summaryEl.innerHTML =
-        '<div class="summary-card"><span class="num">' + school.totals.boxes + '</span><span class="lbl">Boxes sold</span></div>' +
+        (program.unit ? '<div class="summary-card"><span class="num">' + school.totals.boxes + '</span><span class="lbl">' + program.unit + ' sold</span></div>' : '') +
         '<div class="summary-card"><span class="num">' + money(school.totals.amount) + '</span><span class="lbl">Raised</span></div>' +
         '<div class="summary-card"><span class="num">' + school.totals.sellers + '</span><span class="lbl">Students</span></div>';
       renderRosterTable(school);
@@ -786,7 +878,7 @@
     viewSimple.classList.add("active");
     viewLanding.classList.remove("active");
     viewSchool.classList.remove("active");
-    document.title = "The Cookie Board";
+    document.title = program.docTitle;
   }
 
   function showLanding() {
@@ -795,7 +887,7 @@
     viewLanding.classList.add("active");
     viewSimple.classList.remove("active");
     viewSchool.classList.remove("active");
-    document.title = "The Cookie Board";
+    document.title = program.docTitle;
   }
 
   function showSchool(slug) {
@@ -807,11 +899,66 @@
     viewSchool.classList.add("active");
     viewSimple.classList.remove("active");
     viewLanding.classList.remove("active");
-    document.title = school.name + " — The Cookie Board";
+    document.title = school.name + " — " + program.docTitle;
+  }
+
+  // URLs: cookies keep their original links (#bretton-woods, #all);
+  // other programs are prefixed (#boutique, #boutique/all, #boutique/bretton-woods).
+  function hashFor(rest) {
+    if (program.key === DEFAULT_PROGRAM) return rest;
+    return program.key + (rest ? "/" + rest : "");
+  }
+
+  function parseHash() {
+    var h = location.hash.replace(/^#/, "");
+    var parts = h.split("/");
+    if (PROGRAMS[parts[0]]) return { program: parts[0], rest: parts.slice(1).join("/") };
+    return { program: DEFAULT_PROGRAM, rest: h };
+  }
+
+  var switchEl = document.getElementById("program-switch");
+  Object.keys(PROGRAMS).forEach(function (key) {
+    var b = document.createElement("button");
+    b.type = "button";
+    b.setAttribute("data-program", key);
+    b.setAttribute("aria-pressed", "false");
+    b.textContent = PROGRAMS[key].label;
+    b.addEventListener("click", function () {
+      if (key === program.key) return;
+      // Stay on the same kind of page: All Schools stays All Schools, and a
+      // school's page opens that school's page in the other program.
+      var rest = parseHash().rest;
+      var target = PROGRAMS[key];
+      if (rest && rest !== "all" && !target.schools.some(function (s) { return s.slug === rest; })) rest = "";
+      location.hash = key === DEFAULT_PROGRAM ? rest : key + (rest ? "/" + rest : "");
+      if (!location.hash.replace(/^#/, "")) route();
+    });
+    switchEl.appendChild(b);
+  });
+
+  function setProgram(key) {
+    program = PROGRAMS[key];
+    schools = program.schools;
+    currentSchool = null;
+    document.getElementById("board-title").innerHTML = program.titleHtml;
+    document.getElementById("footer-program").textContent = program.footer;
+    document.getElementById("favicon").href = "data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>" + program.icon + "</text></svg>";
+    Array.prototype.forEach.call(switchEl.children, function (b) {
+      b.setAttribute("aria-pressed", b.getAttribute("data-program") === key ? "true" : "false");
+    });
+    statusBox.className = program.statusClass;
+    statusText.textContent = program.statusText;
+    if (program.loaded && !program.schools.some(function (s) { return s.status === "loading"; })) refreshBtn.removeAttribute("disabled");
+    else refreshBtn.setAttribute("disabled", "disabled");
+    renderSimpleGrid();
+    updateAllLockUI();
+    if (!program.loaded) loadAll(program);
   }
 
   function route() {
-    var slug = location.hash.replace(/^#/, "");
+    var parsed = parseHash();
+    if (!program || parsed.program !== program.key) setProgram(parsed.program);
+    var slug = parsed.rest;
     if (slug === "all") { showLanding(); }
     else if (slug) { showSchool(slug); }
     else { showSimple(); }
@@ -819,10 +966,10 @@
 
   window.addEventListener("hashchange", route);
   var backBtn = document.getElementById("back-btn");
-  backBtn.addEventListener("click", function () { location.hash = lastListView === "all" ? "all" : ""; });
+  backBtn.addEventListener("click", function () { location.hash = hashFor(lastListView === "all" ? "all" : ""); });
   document.getElementById("print-btn").addEventListener("click", function () { window.print(); });
-  document.getElementById("all-schools-btn").addEventListener("click", function () { location.hash = "all"; });
-  document.getElementById("simple-view-btn").addEventListener("click", function () { location.hash = ""; });
+  document.getElementById("all-schools-btn").addEventListener("click", function () { location.hash = hashFor("all"); });
+  document.getElementById("simple-view-btn").addEventListener("click", function () { location.hash = hashFor(""); });
 
   // ---- start -----------------------------------------------------------
   // Note: per-school passwords only keep out casual visitors — they live
@@ -830,10 +977,7 @@
   // Don't rely on this to protect anything more sensitive than "don't
   // publicly index this student's info."
 
-  renderSimpleGrid();
-  updateAllLockUI();
   route();
-  loadAll();
 </script>
 </body>
 </html>
